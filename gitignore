@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env
+
+# Flask logs and caches
+instance/
+*.log
+*.sqlite3
+
+# Environment variables
+.env
+*.env
+config.py
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.swp
+
+# Compiled files
+*.so
+
+# macOS system files
+.DS_Store
+
+# Pip dependency cache
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Coverage reports
+htmlcov/
+.coverage
+*.cover
+
+# Pytest and other test artifacts
+.tox/
+nosetests.xml
+coverage.xml
+pytest_cache/

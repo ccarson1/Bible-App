@@ -1,0 +1,36 @@
+####Create Environment######
+pip install -r requirements.txt
+
+1. Start the application
+flask --app main.py run --debug 
+
+
+
+
+
+#################################Database################################
+$env:FLASK_APP = "main.py"
+To verify if it’s set correctly, you can run:
+
+powershell
+Copy code
+echo $env:FLASK_APP
+Initialize Flask-Migrate
+
+Run the following commands to initialize and manage your database migrations:
+
+Initialize Migration Repository:
+
+bash
+Copy code
+flask db init
+Create Migration Script:
+
+bash
+Copy code
+flask db migrate -m "Initial migration"
+Apply Migrations:
+
+bash
+Copy code
+flask db upgrade
