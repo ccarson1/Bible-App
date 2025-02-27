@@ -5,6 +5,7 @@ import re
 import os
 from flask_migrate import Migrate
 import json
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -16,6 +17,9 @@ app.secret_key = secret_key
 # Configure the SQLite database, relative to the app instance folder
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'static/images'
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+
 
 # Initialize the database
 db = SQLAlchemy(app)
@@ -57,6 +61,10 @@ class Users(db.Model):
 # Create the database tables
 with app.app_context():
     db.create_all()
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
 
 
 def get_book_text(book_name):
@@ -122,11 +130,19 @@ def submit_data():
     print(f"Received name: {name}, book: {book}")
     passages=create_html_text(get_book_text(book))
 
-
+    user = session.get('username')
+    print(f"The datatype for the user is {(user)}")
 
     all_notes = Notes.query.filter_by(book_id=book_id).all()
-    notes_list = [{"id": note.id, "title": note.title, "book": note.book_id, "data": note.data} for note in all_notes]
-
+    notes_list = []
+    for note in all_notes:
+        print(type(note.owner))
+        print(type(user))
+        if str(note.owner).rstrip() == str(user).rstrip():
+            print("This passed")
+            notes_list.append({"id": note.id, "title": note.title, "book": note.book_id, "data": note.data} )
+    #notes_list = [{"id": note.id, "title": note.title, "book": note.book_id, "data": note.data} for note in all_notes]
+    print(notes_list)
     # Process the data or save it to the database
     # Return a response
     return jsonify({'book': book, 'passage': passages, 'notes': notes_list}), 200
@@ -184,7 +200,7 @@ def load_bookmark():
 
             print(bookmark)
             passages=create_html_text(get_book_text(book))
-            all_notes = Notes.query.filter_by(book_id=book_id).all()
+            all_notes = Notes.query.filter_by(book_id=book_id, owner=user.username).all()
             notes_list = [{"id": note.id, "title": note.title, "book": note.book_id, "data": note.data} for note in all_notes]
 
             return jsonify({'book': book, 'book_id': book_id, 'page': page, 'passage': passages, 'notes': notes_list}), 200
@@ -367,39 +383,35 @@ def bible():
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     username = session.get('username')
-    userimage = session.get('profile-image')
+    userimage = session.get('profile-image')  # Stored user image in session
     useremail = session.get('email')
     userpass = session.get('password')
 
     if request.method == 'POST':
-        profile_image = request.form.get('profile-image')
         username = request.form.get('username-input')
         email = request.form.get('email-input')
         password = request.form.get('input-pass')
         update = request.form.get('change-input')
         change_image = request.form.get('change-image')
+        profile_image = request.files.get('profile-image')  # Get uploaded file
 
-
-        print(profile_image)
-        print(username)
-        print(email)
-        print(password)
-        print(update)
-        print(change_image)
-
-        if(update == 'on'):
-            print("Updating...")
-
+        if update == 'on':
             user = Users.query.filter_by(username=username).first()
 
             if user:
+                # Handle profile image upload
+                if change_image == 'on' and profile_image and allowed_file(profile_image.filename):
+                    filename = secure_filename(profile_image.filename)
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    profile_image.save(filepath)  # Save file to static/images
 
-                print(user.user_image)
-                print(user.email )
-                print(user.password)
+                    new_image_path = f'images/{filename}'  # Save relative path
+                    user.user_image = new_image_path  
+                    
+                    # 🔹 Update session with the new image path
+                    session['profile-image'] = new_image_path
 
-                if change_image == 'on':
-                    user.user_image = 'images/' + profile_image
+                # Update user info
                 user.email = email
                 user.password = password
 
@@ -408,9 +420,19 @@ def profile():
                     flash('Profile updated successfully', 'success')
                 except Exception as e:
                     db.session.rollback()
-                    flash('Error updataing profile: ' + str(e), 'danger')
+                    flash(f'Error updating profile: {e}', 'danger')
             else:
                 flash('User not found', 'danger')
 
+    # 🔹 Fetch updated session data before rendering
+    return render_template(
+        'profile.html', 
+        username=session.get('username'), 
+        userimage=session.get('profile-image'), 
+        useremail=session.get('email'), 
+        userpass=session.get('password')
+    )
 
-    return render_template('profile.html', username=username, userimage=userimage, useremail=useremail, userpass=userpass)
+
+if __name__ == '__main__':
+    app.run(debug=True)

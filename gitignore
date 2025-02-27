@@ -42,3 +42,6 @@ htmlcov/
 nosetests.xml
 coverage.xml
 pytest_cache/
+
+pdfs/
+.pdf
